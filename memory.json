@@ -1,3 +1,7 @@
 {
-    "name": "yubraj"
+  "name": "yubraj",
+  "terminal": "kitty",
+  "os": "arch",
+  "browser": "brave",
+  "editor": "neovim"
 }

@@ -1,20 +1,17 @@
 import json
 from pathlib import Path
 
-MEMORY_FILE = Path("memory.json")
+FILE = Path("memory.json")
 
 
 def load_memory():
-    if not MEMORY_FILE.exists():
+    if not FILE.exists():
         return {}
-
-    with open(MEMORY_FILE, "r") as f:
-        return json.load(f)
+    return json.loads(FILE.read_text())
 
 
 def save_memory(data):
-    with open(MEMORY_FILE, "w") as f:
-        json.dump(data, f, indent=4)
+    FILE.write_text(json.dumps(data, indent=2))
 
 
 def set_memory(key, value):
@@ -26,4 +23,4 @@ def set_memory(key, value):
 
 def get_memory(key):
     data = load_memory()
-    return data.get(key, None)
+    return data.get(key)

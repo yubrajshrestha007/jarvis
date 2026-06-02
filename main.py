@@ -1,4 +1,4 @@
-from agent import decide
+from router import route
 from tools import TOOLS
 
 print("Jarvis Online")
@@ -7,27 +7,22 @@ while True:
 
     user = input("\nYou > ")
 
-    if user.lower() in ["exit", "quit"]:
+    if user == "exit":
         break
 
-    decision = decide(user)
+    task = route(user)
 
-    tool_name = decision.get("tool")
+    intent = task["intent"]
+    tool_name = task.get("tool")
+    args = task.get("args", {})
 
-    if tool_name == "none":
-        print("\nJarvis >", decision.get("response"))
-        continue
+    if intent in ["MEMORY_WRITE", "MEMORY_READ", "SYSTEM_ACTION"]:
 
-    tool = TOOLS.get(tool_name)
+        tool = TOOLS.get(tool_name)
 
-    if not tool:
-        print("Unknown tool:", tool_name)
-        continue
+        if tool:
+            result = tool(**args) if args else tool()
+            print("\nJarvis >", result)
 
-    try:
-        args = decision.get("arguments", {})
-        result = tool(**args)
-        print("\nJarvis >", result)
-
-    except Exception as e:
-        print("Tool error:", e)
+    else:
+        print("\nJarvis >", "I will respond normally (chat mode)")

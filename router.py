@@ -1,49 +1,88 @@
 from ollama import chat
-import json
+
+from config import MODEL_NAME
+from utils import extract_json
 
 ROUTER_PROMPT = """
-You are an intent router for an AI assistant.
+You are the intent router for Jarvis, Yubraj's Linux PC assistant.
 
-Return ONLY JSON.
+Return ONLY one JSON object. No markdown, no explanation.
 
-Possible intents:
+INTENTS:
+- MEMORY_WRITE — user stores a fact ("my editor is neovim", "remember that...")
+- MEMORY_READ — user asks about stored facts ("what is my editor?", "what's my name?")
+- SYSTEM_ACTION — user wants something DONE on the PC (open app, run command, volume, etc.)
+- CHAT — questions, explanations, coding help, conversation (no PC action)
 
-1. MEMORY_WRITE
-2. MEMORY_READ
-3. SYSTEM_ACTION
-4. CHAT
+TOOLS (use exact names in "tool" field):
 
-TOOLS:
+Memory:
+  set_fact(key, value)
+  get_fact(key)
 
-- set_fact(key, value)
-- get_fact(key)
-- open_brave()
-- open_terminal(command)
-- ram_usage()
-- cpu_usage()
+System info:
+  ram_usage()
+  cpu_usage()
+  disk_usage()
+  battery_status()
+
+PC control:
+  run_command(command) — shell command (ls, git status, pacman -Q, etc.)
+  open_app(name) — launch app (neovim, code, spotify, firefox, ...)
+  open_url(url)
+  open_file(path)
+  open_brave()
+  open_terminal(command) — optional command to run inside terminal
+  list_dir(path) — default "."
+  notify(message)
+  screenshot(path) — optional, default ~/Pictures/jarvis-screenshot.png
+  volume_set(level) — 0-100
+  volume_mute()
+  clipboard_write(text)
+  hypr_command(action) — hyprctl args as string, e.g. "dispatch workspace 2"
 
 RULES:
-- If user stores info → MEMORY_WRITE
-- If user asks "what is X" → MEMORY_READ
-- If system task → SYSTEM_ACTION
-- Else → CHAT
+- "open X" / "launch X" / "start X" → SYSTEM_ACTION, open_app or open_brave for browser
+- "run ..." / "execute ..." / shell-like requests → run_command
+- "list files in ..." → list_dir
+- "set volume to 50" → volume_set
+- Store personal prefs → MEMORY_WRITE + set_fact
+- Ask stored prefs → MEMORY_READ + get_fact
+- Everything else → CHAT, tool null, args {}
 
-OUTPUT FORMAT:
+OUTPUT:
+{"intent": "SYSTEM_ACTION", "tool": "open_app", "args": {"name": "neovim"}}
 
-{
-  "intent": "",
-  "tool": "",
-  "args": {}
-}
+Examples:
+User: open brave → {"intent":"SYSTEM_ACTION","tool":"open_brave","args":{}}
+User: run ls -la in home → {"intent":"SYSTEM_ACTION","tool":"run_command","args":{"command":"ls -la ~"}}
+User: what's my cpu → {"intent":"SYSTEM_ACTION","tool":"cpu_usage","args":{}}
+User: my dog is max → {"intent":"MEMORY_WRITE","tool":"set_fact","args":{"key":"dog","value":"max"}}
+User: explain docker → {"intent":"CHAT","tool":null,"args":{}}
 """
 
-def route(user_input):
+
+def route(user_input: str) -> dict:
     response = chat(
-        model="llama3.1:8b",
+        model=MODEL_NAME,
         messages=[
             {"role": "system", "content": ROUTER_PROMPT},
-            {"role": "user", "content": user_input}
-        ]
+            {"role": "user", "content": user_input},
+        ],
     )
 
-    return json.loads(response["message"]["content"])
+    text = response["message"]["content"]
+    data = extract_json(text)
+
+    if not data:
+        return {"intent": "CHAT", "tool": None, "args": {}}
+
+    intent = data.get("intent", "CHAT")
+    if intent not in ("MEMORY_WRITE", "MEMORY_READ", "SYSTEM_ACTION", "CHAT"):
+        intent = "CHAT"
+
+    return {
+        "intent": intent,
+        "tool": data.get("tool"),
+        "args": data.get("args") or {},
+    }

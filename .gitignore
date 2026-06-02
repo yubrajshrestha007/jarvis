@@ -20,6 +20,9 @@ ENV/
 .venv/
 .env/
 
+# Jarvis runtime
+Pictures/jarvis-screenshot.png
+
 # Testing / coverage
 .pytest_cache/
 .coverage

@@ -1,7 +1,8 @@
 ollama>=0.4.0
 psutil>=5.9.0
+numpy>=1.26.0
 
-# Future voice (uncomment when implementing voice.py):
-# faster-whisper
-# sounddevice
-# piper-tts
+# Voice mode (python main.py --voice)
+vosk>=0.3.45
+sounddevice>=0.4.6
+edge-tts>=6.1.0
